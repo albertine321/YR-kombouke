@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vær</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+<body> 
+    <h1>Sjekk Værmelding</h1>
+    <button onclick="showOslo(); hentVærOslo()">Oslo</button>
+    <button onclick="showTrondheim(); hentVærTrondheim()">Trondheim</button>
+
+
+<section id="Oslo" class="hidden">
+    <div id="vær_melding">
+        <div id="info">
+        <p>Været nå:</p>
+        <p id="vær"></p>
+        </div>
+
+        <div id="info">
+        <p>Air Pressure:</p>
+        <p id="luft"></p>
+        </div>
+
+        <div id="info">
+        <p>Skydekke:</p>
+        <p id="Sky"></p>
+        </div>
+
+        <div id="info">
+        <p>Luftfuktighet:</p>
+        <p id="humidity"></p>
+        </div>
+
+        <div id="info">
+        <p>Vindstyrke:</p>
+        <p id="wind_speed"></p>
+        </div>
+
+        <div id="info">
+        <p>Vindretning:</p>
+        <p id="wind_dir"></p>
+        </div>
+    </div>
+    <!-- <img src="static/weather/svg/clearsky_day.svg" alt=""/> -->
+    </section>
+
+<section id="Trondheim" class="hidden">
+    <div id="vær_melding">
+        <div id="info">
+        <p>Været nå:</p>
+        <p id="værT"></p>
+        </div>
+
+        <div id="info">
+        <p>Air Pressure:</p>
+        <p id="luftT"></p>
+        </div>
+
+        <div id="info">
+        <p>Skydekke:</p>
+        <p id="SkyT"></p>
+        </div>
+
+        <div id="info">
+        <p>Luftfuktighet:</p>
+        <p id="humidityT"></p>
+        </div>
+
+        <div id="info">
+        <p>Vindstyrke:</p>
+        <p id="wind_speedT"></p>
+        </div>
+
+        <div id="info">
+        <p>Vindretning:</p>
+        <p id="wind_dirT"></p>
+        </div>
+    </div>
+    <!-- <img src="static/weather/svg/clearsky_day.svg" alt=""/> -->
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>

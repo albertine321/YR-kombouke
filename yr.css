@@ -1,0 +1,107 @@
+/* ---------- GLOBALT ---------- */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", sans-serif;
+    background: linear-gradient(135deg, #88BFFF, #D8ECFF);
+    color: #1e3557;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---------- OVERSKRIFT ---------- */
+h1 {
+    margin-top: 40px;
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-align: center;
+    color: #0f2747;
+}
+
+/* ---------- BYKNAPPER ---------- */
+button {
+    background-color: #ffffff;
+    border: 2px solid #1e3557;
+    padding: 12px 28px;
+    margin: 15px;
+    border-radius: 12px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: 0.25s ease;
+}
+
+button:hover {
+    background-color: #1e3557;
+    color: white;
+    transform: translateY(-3px);
+}
+
+/* ---------- SEKSJONER ---------- */
+.hidden {
+    display: none;
+}
+
+section {
+    margin-top: 40px;
+    width: 80%;
+    max-width: 750px;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* ---------- VÆRKORT ---------- */
+#vær_melding {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+
+    padding: 25px;
+    border-radius: 20px;
+
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
+
+/* Hver info-boks */
+#info {
+    background-color: rgba(255, 255, 255, 0.6);
+    padding: 15px;
+    border-radius: 15px;
+    text-align: center;
+    font-size: 18px;
+}
+
+#info p:first-child {
+    font-weight: bold;
+    color: #0f2747;
+}
+
+#info p:last-child {
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 6px;
+}
+
+/* ---------- ANIMASJON ---------- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#symbolT, #symbolO{
+    height: 170px;
+    width: 170px;
+    display: flex;
+    padding-left: 20px;
+}

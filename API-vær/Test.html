@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vær (met.no) — enkel demo</title>
+  <style>
+    /* Enkel, moderne styling */
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;--accent:#60a5fa}
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:linear-gradient(180deg,#071126 0%, #091427 60%); color:#e6eef8; margin:0; padding:24px}
+    .container{max-width:900px;margin:0 auto}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    p.lead{margin:0;color:var(--muted)}
+    .card{background:rgba(255,255,255,0.02); padding:16px;border-radius:14px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
+
+    form{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    input[type="number"], input[type="text"]{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px 12px;border-radius:10px;color:inherit;min-width:140px}
+    button{background:var(--accent);border:none;color:#02213a;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:12px;margin-top:16px}
+    @media (max-width:880px){.grid{grid-template-columns:1fr}}
+
+    .weather-main{padding:12px}
+    .meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+
+    .forecast-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(0,0,0,0.03));margin-top:8px}
+    .big{font-size:36px;font-weight:700}
+    .small-muted{color:var(--muted);font-size:13px}
+
+    .history{display:flex;flex-direction:column;gap:8px}
+    .history button{justify-content:flex-start;display:flex;gap:8px}
+    .units{color:var(--muted);font-size:13px;margin-top:8px}
+
+    .loader{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,0.08);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    footer{color:var(--muted);font-size:13px;margin-top:18px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Vær fra met.no — enkel demo</h1>
+        <p class="lead">Søk på lat / lon og hent siste datapunkt og prognose.</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <form id="searchForm">
+        <input id="lat" type="number" step="0.0001" placeholder="Lat (f.eks. 60)" value="60" required />
+        <input id="lon" type="number" step="0.0001" placeholder="Lon (f.eks. 11)" value="11" required />
+        <input id="label" type="text" placeholder="Valgfri navn for dette stedet" />
+        <button id="searchBtn" type="submit">Søk</button>
+        <button id="clearBtn" type="button" class="ghost">Tøm</button>
+      </form>
+
+      <div class="grid">
+        <section class="card weather-main" aria-live="polite">
+          <div class="meta" id="meta">Ingen data</div>
+
+          <div id="weatherContent">
+            <!-- dynamisk innhold -->
+          </div>
+
+          <div class="units" id="units"></div>
+        </section>
+
+        <aside class="card">
+          <strong>Søkehistorikk</strong>
+          <div class="history" id="history"></div>
+
+          <div style="margin-top:12px"><small class="small-muted">API: https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=&lt;lat&gt;&amp;lon=&lt;lon&gt;</small></div>
+        </aside>
+      </div>
+    </div>
+
+    <footer>Merk: Denne demoen viser relevante felter fra <em>properties.timeseries[0].data</em> ("instant" + "next_1_hours|6_hours|12_hours").</footer>
+  </div>
+
+  <script>
+    // Enkel map fra symbol_code til emoji/tekst for visning
+    const SYMBOL_MAP = {
+      partlycloudy_day: '⛅ Delvis skyet',
+      partlycloudy_night: '🌤️ Delvis skyet natt',
+      fair_day: '☀️ Klart',
+      cloudy: '☁️ Skyet',
+      rain: '🌧️ Regn',
+      snow: '❄️ Snø',
+      sleet: '🌨️ Sludd',
+      fog: '🌫️ Tåke'
+    };
+
+    const form = document.getElementById('searchForm');
+    const latInput = document.getElementById('lat');
+    const lonInput = document.getElementById('lon');
+    const labelInput = document.getElementById('label');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const weatherContent = document.getElementById('weatherContent');
+    const metaEl = document.getElementById('meta');
+    const unitsEl = document.getElementById('units');
+    const historyEl = document.getElementById('history');
+
+    // Enkel lokal historikk (session)
+    let history = JSON.parse(sessionStorage.getItem('places') || '[]');
+    renderHistory();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const lat = latInput.value.trim();
+      const lon = lonInput.value.trim();
+      const label = labelInput.value.trim() || `${lat},${lon}`;
+      await fetchAndRender(lat, lon, label);
+      addToHistory({lat, lon, label});
+    });
+
+    clearBtn.addEventListener('click', () => {
+      weatherContent.innerHTML = '';
+      metaEl.textContent = 'Ingen data';
+      unitsEl.textContent = '';
+    });
+
+    async function fetchAndRender(lat, lon, label){
+      if(!lat || !lon) return;
+      const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+
+      // Vis loading
+      metaEl.innerHTML = `<span class="loader" aria-hidden="true"></span> Henter...`;
+      weatherContent.innerHTML = '';
+      unitsEl.textContent = '';
+
+      try{
+        const res = await fetch(url, {headers:{'Accept':'application/json'}});
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // Sjekk at properties finnes
+        const props = data.properties;
+        if(!props) throw new Error('Uventet responstype (mangler properties)');
+
+        // Vis metadata
+        const updated = props.meta && props.meta.updated_at ? new Date(props.meta.updated_at).toLocaleString('nb-NO', {timeZone:'Europe/Oslo'}) : 'ukjent';
+        metaEl.textContent = `${label} — sist oppdatert: ${updated}`;
+
+        // Vis units
+        if(props.meta && props.meta.units){
+          const u = props.meta.units;
+          unitsEl.innerHTML = `Enheter: temp ${u.air_temperature}, lufttrykk ${u.air_pressure_at_sea_level}, vind ${u.wind_speed} (${u.wind_from_direction}), fukt ${u.relative_humidity}, nedbør ${u.precipitation_amount}`;
+        }
+
+        // Finn første timeserie (nærmeste tidspunkt). Vi viser timeseries[0] hvis tilgjengelig
+        const ts = props.timeseries && props.timeseries.length ? props.timeseries[0] : null;
+        if(!ts) {
+          weatherContent.innerHTML = '<div class="small-muted">Ingen timeseries tilgjengelig</div>';
+          return;
+        }
+
+        // Hent instant details
+        const instant = ts.data && ts.data.instant && ts.data.instant.details ? ts.data.instant.details : {};
+        const t = ts.time;
+
+        // Hent prognoser
+        const n1 = ts.data.next_1_hours || null;
+        const n6 = ts.data.next_6_hours || null;
+        const n12 = ts.data.next_12_hours || null;
+
+        // Lag HTML
+        const html = [];
+        html.push(`<div class="forecast-row"><div>
+                    <div class="small-muted">Tidspunkt</div>
+                    <div class="small-muted">${new Date(t).toLocaleString('nb-NO', {timeZone:'Europe/Oslo'})}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="small-muted">${SYMBOL_MAP[(n1 && n1.summary && n1.summary.symbol_code) || ''] || ''}</div>
+                  </div></div>`);
+
+        html.push(`<div class="forecast-row"><div>
+                    <div class="small-muted">Temperatur</div>
+                    <div class="big">${formatNumber(instant.air_temperature)} °C</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="small-muted">Lufttrykk</div>
+                    <div class="big">${formatNumber(instant.air_pressure_at_sea_level)} hPa</div>
+                  </div></div>`);
+
+        html.push(`<div class="forecast-row"><div>
+                    <div class="small-muted">Vind</div>
+                    <div>${formatNumber(instant.wind_speed)} m/s</div>
+                    <div class="small-muted">Retning: ${formatNumber(instant.wind_from_direction)}°</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="small-muted">Fukt</div>
+                    <div>${formatNumber(instant.relative_humidity)} %</div>
+                  </div></div>`);
+
+        // Nedbør fra next_1_hours / next_6_hours / next_12_hours
+        const p1 = n1 && n1.details && typeof n1.details.precipitation_amount !== 'undefined' ? n1.details.precipitation_amount : null;
+        const p6 = n6 && n6.details && typeof n6.details.precipitation_amount !== 'undefined' ? n6.details.precipitation_amount : null;
+        const p12 = n12 && n12.details && typeof n12.details.precipitation_amount !== 'undefined' ? n12.details.precipitation_amount : null;
+
+        html.push(`<div class="forecast-row"><div>
+                    <div class="small-muted">Nedbør neste 1t</div>
+                    <div>${p1 !== null ? p1 + ' mm' : '—'}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="small-muted">Neste 6t / 12t</div>
+                    <div>${p6 !== null ? p6 + ' mm' : '—'} / ${p12 !== null ? p12 + ' mm' : '—'}</div>
+                  </div></div>`);
+
+        // Sett inn i DOM
+        weatherContent.innerHTML = html.join('');
+
+      }catch(err){
+        metaEl.textContent = `Feil: ${err.message}`;
+        weatherContent.innerHTML = `<div class="small-muted">Kunne ikke hente data.</div>`;
+      }
+    }
+
+    function formatNumber(n){
+      if(typeof n === 'undefined' || n === null) return '—';
+      // Vis med én desimal hvis flyttall
+      return Number.isInteger(n) ? n : n.toFixed(1);
+    }
+
+    function addToHistory(entry){
+      // Unngå duplikater (samme lat/lon)
+      history = history.filter(h => !(h.lat === entry.lat && h.lon === entry.lon));
+      history.unshift(entry);
+      // Hold maks 8
+      history = history.slice(0,8);
+      sessionStorage.setItem('places', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function renderHistory(){
+      historyEl.innerHTML = '';
+      if(history.length === 0){
+        historyEl.innerHTML = '<div class="small-muted">Ingen tidligere søk</div>';
+        return;
+      }
+      history.forEach((p, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ghost';
+        btn.innerHTML = `${p.label} <span style="margin-left:auto;color:var(--muted);font-size:13px">${p.lat}, ${p.lon}</span>`;
+        btn.addEventListener('click', () => {
+          latInput.value = p.lat; lonInput.value = p.lon; labelInput.value = p.label;
+          fetchAndRender(p.lat, p.lon, p.label);
+        });
+        historyEl.appendChild(btn);
+      });
+
+      // Legg til knapp for å tømme historikk
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'ghost';
+      clear.textContent = 'Tøm historikk';
+      clear.addEventListener('click', ()=>{ history = []; sessionStorage.removeItem('places'); renderHistory(); });
+      historyEl.appendChild(clear);
+    }
+
+    // Last første default-sted ved oppstart
+    (async ()=>{
+      if(latInput.value && lonInput.value){
+        await fetchAndRender(latInput.value, lonInput.value, 'Standardsted');
+      }
+    })();
+  </script>
+</body>
+</html>
